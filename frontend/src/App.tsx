@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent } from 'react';
 import {
   AlertCircle,
   ArrowLeft,
@@ -178,13 +178,10 @@ function validateCustomer(customer: Customer): Record<keyof Customer, string | n
   const nameLength = customer.name.trim().length;
   const addressLength = customer.address.trim().length;
   const phone = customer.phone.trim();
-  const phoneDigits = phone.replace(/\D/g, '');
 
   return {
     name: nameLength < 2 || nameLength > 100 ? 'Enter a name between 2 and 100 characters.' : null,
-    phone: phone.length > 30 || !/^\+?[\d ()-]+$/.test(phone) || phoneDigits.length < 7 || phoneDigits.length > 15
-      ? 'Enter a valid phone number with 7 to 15 digits.'
-      : null,
+    phone: /^\d{10}$/.test(phone) ? null : 'Enter exactly 10 digits (0–9) for your phone number.',
     address: addressLength < 5 || addressLength > 300 ? 'Enter a delivery address between 5 and 300 characters.' : null,
   };
 }
@@ -200,18 +197,42 @@ function CheckoutDialog({ lines, total, submitting, submitError, onClose, onSubm
   const [customer, setCustomer] = useState<Customer>({ name: '', address: '', phone: '' });
   const [touched, setTouched] = useState<Record<keyof Customer, boolean>>({ name: false, phone: false, address: false });
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const [phoneInputError, setPhoneInputError] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);
   const addressRef = useRef<HTMLTextAreaElement>(null);
   const errors = validateCustomer(customer);
   const visibleErrors = {
     name: touched.name || attemptedSubmit ? errors.name : null,
-    phone: touched.phone || attemptedSubmit ? errors.phone : null,
+    phone: touched.phone || attemptedSubmit || phoneInputError ? phoneInputError || errors.phone : null,
     address: touched.address || attemptedSubmit ? errors.address : null,
   };
 
   function markTouched(field: keyof Customer) {
     setTouched((current) => ({ ...current, [field]: true }));
+  }
+
+  function updatePhone(value: string) {
+    if (!/^\d{0,10}$/.test(value)) {
+      setPhoneInputError('Use digits only, up to 10. Invalid text was not added.');
+      markTouched('phone');
+      return;
+    }
+    setPhoneInputError(null);
+    setCustomer((current) => ({ ...current, phone: value }));
+  }
+
+  function handlePhonePaste(event: ClipboardEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const pasted = event.clipboardData.getData('text');
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? start;
+    const nextValue = input.value.slice(0, start) + pasted + input.value.slice(end);
+    if (!/^\d{0,10}$/.test(nextValue)) {
+      event.preventDefault();
+      setPhoneInputError('Use digits only, up to 10. Invalid pasted text was not added.');
+      markTouched('phone');
+    }
   }
 
   useEffect(() => {
@@ -240,7 +261,7 @@ function CheckoutDialog({ lines, total, submitting, submitError, onClose, onSubm
     };
     const nextErrors = validateCustomer(cleaned);
     setAttemptedSubmit(true);
-    const firstInvalid = (['name', 'phone', 'address'] as const).find((field) => nextErrors[field]);
+    const firstInvalid = (['name', 'phone', 'address'] as const).find((field) => nextErrors[field] || (field === 'phone' && phoneInputError));
     if (firstInvalid === 'name') nameRef.current?.focus();
     if (firstInvalid === 'phone') phoneRef.current?.focus();
     if (firstInvalid === 'address') addressRef.current?.focus();
@@ -260,7 +281,7 @@ function CheckoutDialog({ lines, total, submitting, submitError, onClose, onSubm
             <input ref={nameRef} id="customer-name" type="text" autoComplete="name" placeholder="Your full name" maxLength={100} value={customer.name} onChange={(event) => setCustomer({ ...customer, name: event.target.value })} onBlur={() => markTouched('name')} aria-invalid={Boolean(visibleErrors.name)} aria-describedby={visibleErrors.name ? 'customer-name-error' : undefined} required />
             {visibleErrors.name && <div className="inline-error" id="customer-name-error" role="alert"><AlertCircle size={17} aria-hidden="true" />{visibleErrors.name}</div>}
             <label htmlFor="customer-phone">Phone number</label>
-            <input ref={phoneRef} id="customer-phone" type="tel" autoComplete="tel" inputMode="tel" placeholder="Your phone number" maxLength={30} value={customer.phone} onChange={(event) => setCustomer({ ...customer, phone: event.target.value })} onBlur={() => markTouched('phone')} aria-invalid={Boolean(visibleErrors.phone)} aria-describedby={visibleErrors.phone ? 'customer-phone-error' : undefined} required />
+            <input ref={phoneRef} id="customer-phone" type="tel" autoComplete="tel" inputMode="numeric" pattern="[0-9]{10}" placeholder="10-digit phone number" maxLength={10} value={customer.phone} onChange={(event) => updatePhone(event.target.value)} onPaste={handlePhonePaste} onBlur={() => markTouched('phone')} aria-invalid={Boolean(visibleErrors.phone)} aria-describedby={visibleErrors.phone ? 'customer-phone-error' : undefined} required />
             {visibleErrors.phone && <div className="inline-error" id="customer-phone-error" role="alert"><AlertCircle size={17} aria-hidden="true" />{visibleErrors.phone}</div>}
             <label htmlFor="customer-address">Delivery address</label>
             <textarea ref={addressRef} id="customer-address" autoComplete="street-address" rows={3} placeholder="House or flat number, street, area, city" maxLength={300} value={customer.address} onChange={(event) => setCustomer({ ...customer, address: event.target.value })} onBlur={() => markTouched('address')} aria-invalid={Boolean(visibleErrors.address)} aria-describedby={visibleErrors.address ? 'customer-address-error' : undefined} required />

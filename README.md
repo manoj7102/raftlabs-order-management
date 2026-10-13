@@ -27,7 +27,7 @@ npm run build
 ## Scope
 
 - Browse a food menu with names, descriptions, prices and images.
-- Adjust cart quantities and place an order with name, address and phone.
+- Adjust cart quantities and place an order with name, address and a 10-digit phone number.
 - Track the order through Received, Preparing and Out for Delivery. The browser polls for status changes; the API simulates progress.
 - Validate input on the API and cover key API/UI flows with tests.
 
@@ -47,7 +47,7 @@ Example order request:
   "customer": {
     "name": "Aarav Sharma",
     "address": "123 Sample Street, Jaipur",
-    "phone": "+91 9876543210"
+    "phone": "9876543210"
   },
   "items": [
     { "menuItemId": "margherita-pizza", "quantity": 2 }

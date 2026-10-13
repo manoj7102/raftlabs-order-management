@@ -9,7 +9,7 @@ import { OrderStore } from '../src/order-store';
 const customer = {
   name: 'Aarav Sharma',
   address: '12 Park Street, New Delhi',
-  phone: '+91 98765 43210',
+  phone: '9876543210',
 };
 
 interface RequestOptions {
@@ -120,6 +120,9 @@ describe('order API', () => {
     ['blank name', { customer: { ...customer, name: ' ' }, items: [{ menuItemId: 'margherita-pizza', quantity: 1 }] }, 'customer.name'],
     ['short address', { customer: { ...customer, address: 'x' }, items: [{ menuItemId: 'margherita-pizza', quantity: 1 }] }, 'customer.address'],
     ['invalid phone', { customer: { ...customer, phone: 'call me' }, items: [{ menuItemId: 'margherita-pizza', quantity: 1 }] }, 'customer.phone'],
+    ['short phone', { customer: { ...customer, phone: '987654321' }, items: [{ menuItemId: 'margherita-pizza', quantity: 1 }] }, 'customer.phone'],
+    ['long phone', { customer: { ...customer, phone: '98765432101' }, items: [{ menuItemId: 'margherita-pizza', quantity: 1 }] }, 'customer.phone'],
+    ['country code phone', { customer: { ...customer, phone: '+91 9876543210' }, items: [{ menuItemId: 'margherita-pizza', quantity: 1 }] }, 'customer.phone'],
     ['empty cart', { customer, items: [] }, 'items'],
     ['unknown item', { customer, items: [{ menuItemId: 'not-on-menu', quantity: 1 }] }, 'items[0].menuItemId'],
     ['fractional quantity', { customer, items: [{ menuItemId: 'margherita-pizza', quantity: 1.5 }] }, 'items[0].quantity'],

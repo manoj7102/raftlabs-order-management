@@ -78,7 +78,7 @@ describe('ordering flow', () => {
     expect(window.localStorage.getItem('hearth-harvest-active-order')).toBe('test-order-123');
   });
 
-  it('shows field errors for an oversized phone and blank address, then accepts corrections', async () => {
+  it('rejects oversized and non-digit phone pastes, then accepts exactly 10 digits and an address', async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (url === '/api/menu') return jsonResponse(menu);
       if (url === '/api/orders' && init?.method === 'POST') return jsonResponse(order, 201);
@@ -105,11 +105,20 @@ describe('ordering flow', () => {
 
     await user.clear(name);
     await user.type(name, 'Asha Rao');
-    await user.type(phone, '123456789012345678901');
-    await user.tab();
-    expect(phone).toHaveAttribute('maxLength', '30');
+    await user.click(phone);
+    await user.paste('123456789012345678901');
+    expect(phone).toHaveValue('');
     expect(phone).toHaveAttribute('aria-invalid', 'true');
-    expect(within(dialog).getByText('Enter a valid phone number with 7 to 15 digits.')).toBeInTheDocument();
+    expect(within(dialog).getByText('Use digits only, up to 10. Invalid pasted text was not added.')).toBeInTheDocument();
+    await user.paste('call-me');
+    expect(phone).toHaveValue('');
+
+    await user.type(phone, '987654321');
+    await user.tab();
+    expect(phone).toHaveAttribute('maxLength', '10');
+    expect(phone).toHaveAttribute('pattern', '[0-9]{10}');
+    expect(phone).toHaveAttribute('aria-invalid', 'true');
+    expect(within(dialog).getByText('Enter exactly 10 digits (0–9) for your phone number.')).toBeInTheDocument();
 
     await user.click(within(dialog).getByRole('button', { name: /Place order/i }));
     expect(address).toHaveAttribute('aria-invalid', 'true');
@@ -117,8 +126,7 @@ describe('ordering flow', () => {
     expect(phone).toHaveFocus();
     expect(fetchMock.mock.calls.some(([url, init]) => url === '/api/orders' && init?.method === 'POST')).toBe(false);
 
-    await user.clear(phone);
-    await user.type(phone, '9876543210');
+    await user.type(phone, '0');
     await user.type(address, '12 Market Road, Pune');
     expect(phone).toHaveAttribute('aria-invalid', 'false');
     expect(address).toHaveAttribute('aria-invalid', 'false');

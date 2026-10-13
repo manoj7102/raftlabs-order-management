@@ -35,14 +35,17 @@ export function parseOrderRequest(
     throw new ValidationError('Customer details are required.', 'customer');
   }
 
+  if (typeof body.customer.phone !== 'string') {
+    throw new ValidationError('customer.phone must contain exactly 10 digits.', 'customer.phone');
+  }
+
   const customer: Customer = {
     name: requiredText(body.customer.name, 'customer.name', 2, 100),
     address: requiredText(body.customer.address, 'customer.address', 5, 300),
-    phone: requiredText(body.customer.phone, 'customer.phone', 7, 30),
+    phone: body.customer.phone.trim(),
   };
-  const digitCount = customer.phone.replace(/\D/g, '').length;
-  if (!/^\+?[\d ()-]+$/.test(customer.phone) || digitCount < 7 || digitCount > 15) {
-    throw new ValidationError('customer.phone must be a valid phone number.', 'customer.phone');
+  if (!/^[0-9]{10}$/.test(customer.phone)) {
+    throw new ValidationError('customer.phone must contain exactly 10 digits.', 'customer.phone');
   }
 
   if (!Array.isArray(body.items) || body.items.length < 1 || body.items.length > 25) {
